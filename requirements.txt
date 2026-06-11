@@ -1,8 +1,9 @@
 ﻿fastapi
 uvicorn
 pdfplumber
+trafilatura
 sentence-transformers
 psycopg2-binary
 python-dotenv
 google-generativeai
-prometheus-client
+Prometheus-client

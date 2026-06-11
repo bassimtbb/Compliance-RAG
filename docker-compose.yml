@@ -1,3 +1,5 @@
+version: "3.9"
+ 
 services:
 
   postgres:
@@ -29,6 +31,54 @@ services:
       timeout: 5s
 
       retries: 5
+ 
+  ingest:
+
+    build: .
+
+    command: python -m app.ingest
+
+    env_file: .env
+
+    environment:
+
+      - DATABASE_URL=postgresql://rag:rag@postgres:5432/rag
+
+    depends_on:
+
+      postgres:
+
+        condition: service_healthy
+
+    volumes:
+
+      - .:/app
+
+    restart: "no"
+ 
+  embed:
+
+    build: .
+
+    command: sh -c "sleep 10 && python -m app.embed"
+
+    env_file: .env
+
+    environment:
+
+      - DATABASE_URL=postgresql://rag:rag@postgres:5432/rag
+
+    depends_on:
+
+      postgres:
+
+        condition: service_healthy
+
+    volumes:
+
+      - .:/app
+
+    restart: "no"
  
   api:
 
