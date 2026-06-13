@@ -1,0 +1,5 @@
+- Équipe :
+Bassim Tabbeb 
+Mathis Penagos
+- Projet : C — Compliance RAG (pgvector)
+- Dépôt GitHub : https://github.com/bassimtbb/Compliance-RAG
