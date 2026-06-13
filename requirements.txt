@@ -5,5 +5,5 @@ trafilatura
 sentence-transformers
 psycopg2-binary
 python-dotenv
-google-generativeai
 Prometheus-client
+google-genai
