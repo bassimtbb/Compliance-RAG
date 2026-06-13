@@ -1,140 +1,87 @@
-version: "3.9"
- 
 services:
-
   postgres:
-
     image: pgvector/pgvector:pg16
-
     environment:
-
       POSTGRES_USER: rag
-
-      POSTGRES_PASSWORD: rag
-
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-rag}
       POSTGRES_DB: rag
-
     ports:
-
       - "5432:5432"
-
     volumes:
-
       - pgdata:/var/lib/postgresql/data
-
     healthcheck:
-
       test: ["CMD-SHELL", "pg_isready -U rag"]
-
       interval: 5s
-
       timeout: 5s
-
       retries: 5
- 
+
   ingest:
-
     build: .
-
     command: python -m app.ingest
-
     env_file: .env
-
     environment:
-
-      - DATABASE_URL=postgresql://rag:rag@postgres:5432/rag
-
+      - DATABASE_URL=postgresql://rag:${POSTGRES_PASSWORD:-rag}@postgres:5432/rag
+      - PYTHONUNBUFFERED=1
     depends_on:
-
       postgres:
-
         condition: service_healthy
-
     volumes:
-
       - .:/app
-
     restart: "no"
- 
+
   embed:
-
     build: .
-
-    command: sh -c "sleep 10 && python -m app.embed"
-
+    command: python -m app.embed
     env_file: .env
-
     environment:
-
-      - DATABASE_URL=postgresql://rag:rag@postgres:5432/rag
-
+      - DATABASE_URL=postgresql://rag:${POSTGRES_PASSWORD:-rag}@postgres:5432/rag
+      - PYTHONUNBUFFERED=1
     depends_on:
-
       postgres:
-
         condition: service_healthy
-
+      ingest:
+        condition: service_completed_successfully
     volumes:
-
       - .:/app
-
     restart: "no"
- 
+
   api:
-
     build: .
-
-    command: uvicorn app.api:app --host 0.0.0.0 --port 8000 --reload
-
+    command: uvicorn app.api:app --host 0.0.0.0 --port 8000 --workers 1
     ports:
-
       - "8000:8000"
-
     env_file: .env
-
     environment:
-
-      - DATABASE_URL=postgresql://rag:rag@postgres:5432/rag
-
+      - DATABASE_URL=postgresql://rag:${POSTGRES_PASSWORD:-rag}@postgres:5432/rag
+      - PYTHONUNBUFFERED=1
     depends_on:
-
       postgres:
-
         condition: service_healthy
-
     volumes:
-
       - .:/app
- 
+
   prometheus:
-
     image: prom/prometheus:latest
-
     ports:
-
       - "9090:9090"
-
     volumes:
-
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
- 
-  grafana:
-
-    image: grafana/grafana:latest
-
-    ports:
-
-      - "3000:3000"
-
-    environment:
-
-      - GF_SECURITY_ADMIN_PASSWORD=admin
-
     depends_on:
+      - api
 
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GF_ADMIN_PASSWORD:-admin}
+    depends_on:
       - prometheus
- 
-volumes:
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards
 
+volumes:
   pgdata:
- 
+  grafana_data:

@@ -1,4 +1,3 @@
-"""Embeddings + upsert dans pgvector."""
 from __future__ import annotations
 import json
 import os
@@ -28,6 +27,9 @@ def embed():
         texts=texts,
         metadatas=[r["metadata"] for r in records],
     )
+
+    store.ensure_index()
+
     print(f"[embed] ✅ {len(records)} chunks indexés dans pgvector")
 
 

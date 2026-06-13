@@ -32,11 +32,38 @@ def extract_text(path: Path) -> str:
     return path.read_text(encoding="utf-8", errors="replace")
 
 
-def chunk_text(text: str, max_chars: int = 1200) -> list[str]:
+def _split_long_paragraph(para: str, max_chars: int) -> list[str]:
+    sentences = [s.strip() for s in re.split(r"(?<=[.!?])\s+", para) if s.strip()]
+    pieces, current = [], ""
+    for sentence in sentences:
+        if len(current) + len(sentence) > max_chars and current:
+            pieces.append(current.strip())
+            current = sentence
+        else:
+            current = (current + " " + sentence).strip() if current else sentence
+    if current:
+        pieces.append(current.strip())
+    final = []
+    for piece in pieces:
+        if len(piece) > max_chars:
+            final.extend(
+                piece[i:i + max_chars] for i in range(0, len(piece), max_chars)
+            )
+        else:
+            final.append(piece)
+    return final
+
+
+def chunk_text(text: str, max_chars: int = 500) -> list[str]:
     paragraphs = [p.strip() for p in re.split(r"\n{2,}", text) if p.strip()]
     chunks, current = [], ""
     for para in paragraphs:
-        if len(current) + len(para) > max_chars and current:
+        if len(para) > max_chars:
+            if current:
+                chunks.append(current.strip())
+                current = ""
+            chunks.extend(_split_long_paragraph(para, max_chars))
+        elif len(current) + len(para) > max_chars and current:
             chunks.append(current.strip())
             current = para
         else:
@@ -58,7 +85,6 @@ def ingest():
         + list(CORPUS.rglob("*.md"))
     )
 
-    # Exclure corpus/raw/
     files = [f for f in files if "raw" not in f.parts]
 
     for filepath in files:
@@ -96,8 +122,10 @@ def ingest():
 
     pii_report = report()
     print(f"[anonymisation] {len(records)} chunks traités")
-    print(f"  - emails masqués     : {pii_report.get('email', 0)}")
-    print(f"  - téléphones masqués : {pii_report.get('telephone', 0)}")
+    print(f"  - emails masqués          : {pii_report.get('email', 0)}")
+    print(f"  - téléphones FR masqués   : {pii_report.get('telephone_fr', 0)}")
+    print(f"  - téléphones INTL masqués : {pii_report.get('telephone_intl', 0)}")
+    print(f"  - NIR masqués (Art.9)     : {pii_report.get('nir', 0)}")
     return records
 
 
